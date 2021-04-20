@@ -200,15 +200,26 @@ fn main() {
             .help("Sets the display scale, i.e. how many pixels each cell should take up on the \
                 screen")
             .takes_value(true))
+        .arg(clap::Arg::with_name("start-paused")
+            .long("start-paused")
+            .help("Whether to start the simulation paused"))
         .get_matches();
 
+    // Set screen parameters
     let screen_width  = parse_arg(&args, "width",  SCREEN_WIDTH);
     let screen_height = parse_arg(&args, "height", SCREEN_HEIGHT);
     let screen_scale  = parse_arg(&args, "scale",  SCREEN_SCALE);
 
-    // Start the application
+    // Initialize the application
     let game = GameOfLife::new(screen_width as usize, screen_height as usize);
     let mut application = Application::new(game);
+
+    // Start in step mode if specified on the command line
+    if args.is_present("start-paused") {
+        application.step = true;
+    }
+
+    // Start the application
     olc::start_with_full_screen_and_vsync(
         "RustLife",
         &mut application,
