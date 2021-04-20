@@ -1,3 +1,4 @@
+extern crate clap;
 extern crate olc_pixel_game_engine;
 extern crate rand;
 
@@ -68,7 +69,8 @@ impl olc::Application for Application {
 
         // Reset the game state
         if olc::get_key(KEY_RESET).pressed {
-            self.game = GameOfLife::default();
+            self.game = GameOfLife::new(olc::screen_width() as usize,
+                                        olc::screen_height() as usize);
         }
 
         self.game.draw();
@@ -87,13 +89,12 @@ struct GameOfLife {
     die_threshold_upper: u8,
 }
 
-impl Default for GameOfLife {
-    fn default() -> Self {
-        let screen_width_usize = SCREEN_WIDTH as usize;
-        let screen_height_usize = SCREEN_HEIGHT as usize;
-        let mut initial_state = vec![vec![false; screen_height_usize]; screen_width_usize];
-        for y in 0..screen_height_usize {
-            for x in 0..screen_width_usize {
+impl GameOfLife {
+    // Create a new game structure with a given width and height
+    fn new(width: usize, height: usize) -> Self {
+        let mut initial_state = vec![vec![false; height]; width];
+        for y in 0..height {
+            for x in 0..width {
                 // Randomly set each cell to true or false
                 initial_state[x][y] = rand::random();
             }
@@ -106,9 +107,7 @@ impl Default for GameOfLife {
             die_threshold_upper: 3,
         };
     }
-}
 
-impl GameOfLife {
     // Update the game state
     fn update(&mut self) {
         let screen_width_usize = olc::screen_width() as usize;
@@ -163,17 +162,60 @@ impl GameOfLife {
 }
 
 
+// Utility function to get a command line arg or return a default value
+fn parse_arg<T: std::str::FromStr>(arg_matches: &clap::ArgMatches, arg: &str, default: T) -> T {
+    if let Some(string) = &arg_matches.value_of(arg) {
+        if let Ok(n) = string.parse::<T>() {
+            return n;
+        } else {
+            eprintln!("ERROR: Couldn't parse value for argument `{}`", arg);
+            std::process::exit(1);
+        }
+    } else {
+        return default;
+    }
+}
 
 fn main() {
+    // Handle command line args
+    let args = clap::App::new("RustLife")
+        .version("0.1.0")
+        .about("A Rust implementation of Conway's Game of Life")
+        .arg(clap::Arg::with_name("width")
+            .short("W")
+            .long("width")
+            .value_name("WIDTH")
+            .help("Sets the simulation space's width")
+            .takes_value(true))
+        .arg(clap::Arg::with_name("height")
+            .short("H")
+            .long("height")
+            .value_name("HEIGHT")
+            .help("Sets the simulation space's height")
+            .takes_value(true))
+        .arg(clap::Arg::with_name("scale")
+            .short("S")
+            .long("scale")
+            .value_name("SCALE")
+            .help("Sets the display scale, i.e. how many pixels each cell should take up on the \
+                screen")
+            .takes_value(true))
+        .get_matches();
+
+    let screen_width  = parse_arg(&args, "width",  SCREEN_WIDTH);
+    let screen_height = parse_arg(&args, "height", SCREEN_HEIGHT);
+    let screen_scale  = parse_arg(&args, "scale",  SCREEN_SCALE);
+
     // Start the application
-    let mut application = Application::new(GameOfLife::default());
+    let game = GameOfLife::new(screen_width as usize, screen_height as usize);
+    let mut application = Application::new(game);
     olc::start_with_full_screen_and_vsync(
         "RustLife",
         &mut application,
-        SCREEN_WIDTH,
-        SCREEN_HEIGHT,
-        SCREEN_SCALE,
-        SCREEN_SCALE,
+        screen_width,
+        screen_height,
+        screen_scale,
+        screen_scale,
         false,
         true
     ).unwrap();
