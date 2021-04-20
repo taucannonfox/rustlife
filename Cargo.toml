@@ -7,3 +7,4 @@ authors = ["Hadley Deary <tdeary@protonmail.com>"]
 
 [dependencies]
 olc_pixel_game_engine = "0.5.0"
+rand = "0.8.3"

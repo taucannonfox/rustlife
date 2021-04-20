@@ -1,7 +1,7 @@
 extern crate olc_pixel_game_engine;
-use crate::olc_pixel_game_engine as olc;
+extern crate rand;
 
-use std::time::SystemTime;
+use crate::olc_pixel_game_engine as olc;
 
 // Screen constants
 const SCREEN_WIDTH:  i32 = 200;
@@ -95,11 +95,9 @@ impl Default for GameOfLife {
         for y in 0..screen_height_usize {
             for x in 0..screen_width_usize {
                 // Randomly set each cell to true or false
-                initial_state[x][y] = (olc::c_rand() % 2) != 0;
+                initial_state[x][y] = rand::random();
             }
         }
-
-        //print!("Initial state: {:?}", initial_state);
 
         return GameOfLife {
             state: initial_state,
@@ -167,12 +165,6 @@ impl GameOfLife {
 
 
 fn main() {
-    // Set the RNG seed
-    match SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
-        Ok(time) => olc::c_srand(time.as_secs() as u32),
-        Err(_)   => panic!("SystemTime is before UNIX Epoch!")
-    }
-
     // Start the application
     let mut application = Application::new(GameOfLife::default());
     olc::start_with_full_screen_and_vsync(
