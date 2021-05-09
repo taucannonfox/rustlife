@@ -5,7 +5,9 @@ Yet another implementation of Conway's Game of Life. I'm currently learning Rust
 Currently, key bindings are hardcoded. They are:
 * SPACEBAR - Pause/unpause the simulation
 * S - Step the simulation while paused
+* E - Reinitialize the simulation with an empty state
 * R - Reinitialize the simulation with a random state
+* LMB - Toggle the cell under the pointer (works in live and step mode)
 
 ## Special thanks
 RustLife is built using PixelGameEngine. Thanks to [javidx9](https://github.com/OneLoneCoder) for making the original, and to [Matthew Bettcher](https://github.com/mattbettcher) for porting it to Rust!

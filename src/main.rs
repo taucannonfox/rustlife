@@ -16,6 +16,7 @@ const UPDATE_TIME: f32 = 1.0 / 15.0;  // 15 FPS
 const KEY_STEP:        olc::Key = olc::Key::S;
 const KEY_STEP_TOGGLE: olc::Key = olc::Key::SPACE;
 const KEY_RESET:       olc::Key = olc::Key::R;
+const KEY_EMPTY:       olc::Key = olc::Key::E;
 
 /* ##########################################
 # The main application structure.           #
@@ -61,16 +62,25 @@ impl olc::Application for Application {
             }
         }
 
-        // Toggle step mode
-        if olc::get_key(KEY_STEP_TOGGLE).pressed {
+        // Input handling
+        if olc::get_key(KEY_EMPTY).pressed {
+            // Reset with empty state
+            self.game.empty_state();
+            self.step = true;
+        } else if olc::get_key(KEY_RESET).pressed {
+            // Reset with random state
+            self.game.randomize_state();
+        } else if olc::get_key(KEY_STEP_TOGGLE).pressed {
+            // Toggle step mode
             self.step = !self.step;
             self.update_counter = 0.0;
         }
 
-        // Reset the game state
-        if olc::get_key(KEY_RESET).pressed {
-            self.game = GameOfLife::new(olc::screen_width() as usize,
-                                        olc::screen_height() as usize);
+        // Click to toggle a cell
+        if olc::get_mouse(0).pressed {
+            let x = olc::get_mouse_x() as usize;
+            let y = olc::get_mouse_y() as usize;
+            self.game.state[x][y] = !self.game.state[x][y];
         }
 
         self.game.draw();
@@ -84,6 +94,8 @@ impl olc::Application for Application {
 ################################################ */
 struct GameOfLife {
     state: Vec<Vec<bool>>,
+    state_width: usize,
+    state_height: usize,
     live_threshold: u8,
     die_threshold_lower: u8,
     die_threshold_upper: u8,
@@ -92,16 +104,10 @@ struct GameOfLife {
 impl GameOfLife {
     // Create a new game structure with a given width and height
     fn new(width: usize, height: usize) -> Self {
-        let mut initial_state = vec![vec![false; height]; width];
-        for y in 0..height {
-            for x in 0..width {
-                // Randomly set each cell to true or false
-                initial_state[x][y] = rand::random();
-            }
-        }
-
         return GameOfLife {
-            state: initial_state,
+            state: vec![vec![false; height]; width],
+            state_width: width,
+            state_height: height,
             live_threshold: 3,
             die_threshold_lower: 2,
             die_threshold_upper: 3,
@@ -110,12 +116,9 @@ impl GameOfLife {
 
     // Update the game state
     fn update(&mut self) {
-        let screen_width_usize = olc::screen_width() as usize;
-        let screen_height_usize = olc::screen_height() as usize;
         let mut new_state = self.state.clone();
-
-        for y in 0..screen_height_usize {
-            for x in 0..screen_width_usize {
+        for y in 0..self.state_height {
+            for x in 0..self.state_width {
                 let neighbors = self.cell_get_neighbors(x as i32, y as i32);
                 if self.state[x][y]
                         && (neighbors < self.die_threshold_lower
@@ -135,10 +138,10 @@ impl GameOfLife {
     // Draw the game state to the screen
     fn draw(&self) {
         olc::clear(olc::BLACK);
-        for y in 0..olc::screen_height() {
-            for x in 0..olc::screen_width() {
-                if self.state[x as usize][y as usize] {
-                    olc::draw(x, y, olc::WHITE);
+        for y in 0..self.state_height {
+            for x in 0..self.state_width {
+                if self.state[x][y] {
+                    olc::draw(x as i32, y as i32, olc::WHITE);
                 }
             }
         }
@@ -149,15 +152,34 @@ impl GameOfLife {
         let mut total = 0;
         for yofs in -1..=1 {
             for xofs in -1..=1 {
-                if (0..olc::screen_width()).contains(&(x + xofs))          // x bounds check
-                        && (0..olc::screen_height()).contains(&(y + yofs)) // y bounds check
+                let x2 = (x + xofs) as usize;
+                let y2 = (y + yofs) as usize;
+
+                if (0..self.state_width).contains(&x2)          // x bounds check
+                        && (0..self.state_height).contains(&y2) // y bounds check
                         && (xofs != 0 || yofs != 0) // Don't count center cell
-                        && self.state[(x + xofs) as usize][(y + yofs) as usize] {
+                        && self.state[x2][y2] {
                     total += 1;
                 }
             }
         }
         return total;
+    }
+
+    // Reset to an empty state
+    fn empty_state(&mut self) {
+        self.state = vec![vec![false; self.state_height]; self.state_width];
+    }
+
+    // Set each bit of the state randomly
+    fn randomize_state(&mut self) {
+        self.state = vec![vec![false; self.state_height]; self.state_width];
+        for y in 0..self.state_height {
+            for x in 0..self.state_width {
+                // Randomly set each cell to true or false
+                self.state[x][y] = rand::random();
+            }
+        }
     }
 }
 
@@ -211,7 +233,8 @@ fn main() {
     let screen_scale  = parse_arg(&args, "scale",  SCREEN_SCALE);
 
     // Initialize the application
-    let game = GameOfLife::new(screen_width as usize, screen_height as usize);
+    let mut game = GameOfLife::new(screen_width as usize, screen_height as usize);
+    game.randomize_state();
     let mut application = Application::new(game);
 
     // Start in step mode if specified on the command line
